@@ -5,6 +5,36 @@
       "command": "npx",
       "args": ["-y", "@azure-devops/mcp", "YOUR_ORG"],
       "tools": ["*"]
+    },
+    "sql-mcp-dev": {
+      "type": "local",
+      "command": "npx",
+      "args": ["-y", "@bilims/mcp-sqlserver"],
+      "env": {
+        "SQLSERVER_HOST": "your-dev-server.database.windows.net",
+        "SQLSERVER_PORT": "1433",
+        "SQLSERVER_DATABASE": "your-dev-db",
+        "SQLSERVER_USER": "read_only_user",
+        "SQLSERVER_PASSWORD": "REPLACE_ME",
+        "SQLSERVER_ENCRYPT": "true",
+        "SQLSERVER_TRUST_CERT": "false"
+      },
+      "tools": ["*"]
+    },
+    "sql-mcp-qa": {
+      "type": "local",
+      "command": "npx",
+      "args": ["-y", "@bilims/mcp-sqlserver"],
+      "env": {
+        "SQLSERVER_HOST": "your-qa-server.database.windows.net",
+        "SQLSERVER_PORT": "1433",
+        "SQLSERVER_DATABASE": "your-qa-db",
+        "SQLSERVER_USER": "read_only_user",
+        "SQLSERVER_PASSWORD": "REPLACE_ME",
+        "SQLSERVER_ENCRYPT": "true",
+        "SQLSERVER_TRUST_CERT": "false"
+      },
+      "tools": ["*"]
     }
   }
 }

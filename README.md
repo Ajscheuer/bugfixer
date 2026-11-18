@@ -16,7 +16,10 @@ Every Copilot call runs with `--yolo --autopilot --no-ask-user --model auto`, an
 ## Setup (Windows)
 
 1. Install Copilot CLI and sign in once: `npm i -g @github/copilot`, then `copilot` → `/login`.
-2. Make sure Copilot CLI can see the ADO MCP server. Either add it to `~/.copilot/mcp-config.json`, or copy `mcp-config.sample.json` to `mcp-config.json` next to the exe and set your org. Then run `copilot`, type `/mcp` and check the server name matches `Ado.McpServerName`.
+2. Set up the MCP servers. Copy `mcp-config.sample.json` to `mcp-config.json` (git-ignored) and fill it in:
+   - `ado`: your Azure DevOps org. Skip it if the ADO server is already in `~/.copilot/mcp-config.json`, and set `Ado.McpServerName` to that server's name instead (run `copilot`, then `/mcp`, to see the names).
+   - `sql-mcp-dev` / `sql-mcp-qa` (optional): read-only database access used to confirm bugs and spot data issues. `@bilims/mcp-sqlserver` only allows SELECT; use a least-privilege login. List them in `DatabaseMcpServers`, or delete them if you don't want database access.
+   - Set `Copilot.AdditionalMcpConfig` to `mcp-config.json`.
 3. Copy `bugfixer.json` to `bugfixer.local.json` (git-ignored, picked up automatically) and edit it: `RepoPath`, `WorktreeRoot` (must be outside the repo), and `Ado.Organization`, `Ado.Project` and `Ado.Repository`.
 4. Build: `dotnet publish -c Release -o C:\tools\bugfixer`
 
