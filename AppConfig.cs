@@ -31,6 +31,9 @@ public sealed class AppConfig
     /// <summary>After this many tooling failures in a row (auth expired, CLI crash...), back off.</summary>
     public int MaxConsecutiveInfraFailures { get; set; } = 3;
     public int InfraBackoffMinutes { get; set; } = 30;
+    /// <summary>Read-only database MCP servers the fix agent may query to confirm bugs against real data.
+    /// Key = MCP server name, value = what it is (e.g. "DEV"). Empty = no database access at all.</summary>
+    public Dictionary<string, string> DatabaseMcpServers { get; set; } = new();
     /// <summary>Appended verbatim to the fix prompt (repo conventions, test commands, etc.).</summary>
     public string? ExtraFixInstructions { get; set; }
 

@@ -29,6 +29,9 @@
     "ExtraArgs": []
   },
 
+  // Read-only DB MCP servers the fix agent may query to confirm a bug, e.g. { "sql-mcp-dev": "DEV" }.
+  "DatabaseMcpServers": {},
+
   "IdleMinutes": 10,
   "PauseBetweenBugsSeconds": 15,
   "MaxFilesChanged": 15,

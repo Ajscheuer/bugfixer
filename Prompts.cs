@@ -87,8 +87,9 @@ public static class Prompts
           remove worktrees. Do not change git config. You may push, but only this branch
           (`git push -u {{cfg.Remote}} {{branch}}`) and never with --force; never push to
           `{{cfg.BaseBranch}}` or any other branch. The PR is created after you finish.
-        - Do NOT start the backend API or the Vite dev server. Do NOT connect to any SQL Server or other
-          database; tests use the existing InMemory/unit setups.
+        - Do NOT start the backend API or the Vite dev server. Tests use the existing InMemory/unit
+          setups; never point tests or the app at a real database.
+        {{DatabaseRule(cfg)}}
         - Run only scoped/focused tests for what you change (a specific test project, `--filter`, or test
           file). Never run the full backend or full frontend test suite.
         - Keep the change minimal and focused on this bug: no refactors, no reformatting, no dependency
@@ -137,6 +138,13 @@ public static class Prompts
         ```
         {{(string.IsNullOrWhiteSpace(cfg.ExtraFixInstructions) ? "" : "\n## Project-specific notes\n" + cfg.ExtraFixInstructions)}}
         """;
+
+    private static string DatabaseRule(AppConfig cfg) => cfg.DatabaseMcpServers.Count == 0
+        ? "- Do NOT connect to any SQL Server or other database."
+        : "- To confirm the bug against real data you may query these databases through their MCP servers: " +
+          string.Join(", ", cfg.DatabaseMcpServers.Select(kv => $"`{kv.Key}` ({kv.Value})")) +
+          ". READ-ONLY: SELECT queries only, never INSERT/UPDATE/DELETE/DDL or stored procedures that change data. " +
+          "Use only these servers; never connect to a database any other way. Data issues (bad rows rather than bad code) are NEEDS_HUMAN, not code fixes.";
 
     public static string PublishPr(AppConfig cfg, int id, string branch, string title, string descriptionFile, string prJson) => $$"""
         # Create a DRAFT pull request — unattended

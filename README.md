@@ -49,3 +49,4 @@ If Copilot or git fails 3 times in a row (for example an expired login or an MCP
 
 - `Copilot.DenyTools` blocks tools or whole MCP servers in every Copilot call. Use it for anything in your global `~/.copilot/mcp-config.json` the agent must never touch, such as database servers.
 - `PrTitleFormat` controls the PR title (`{id}`, `{title}`). Set it to `{title}` if your repo has its own title convention and you tell the agent about it in `ExtraFixInstructions`.
+- `DatabaseMcpServers` lets the fix agent query real data to confirm a bug, e.g. `{ "sql-mcp-dev": "DEV", "sql-mcp-qa": "QA" }`. Use read-only servers (such as `@bilims/mcp-sqlserver`, which only allows SELECT) with a least-privilege login. Put their definitions in your git-ignored `mcp-config.json`.
