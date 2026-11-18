@@ -11,7 +11,8 @@ public sealed class BugDetails
 
 public sealed class FixResult
 {
-    public string? Verdict { get; set; }          // FIXED | NOT_REPRODUCIBLE | NEEDS_HUMAN
+    public string? Verdict { get; set; }          // FIXED | NOT_REPRODUCIBLE | DATA_ISSUE | NEEDS_HUMAN
+    public string? Environment { get; set; }      // DATA_ISSUE only: QA | DEV
     public string? Summary { get; set; }
     public string? Evidence { get; set; }
     public string? RootCause { get; set; }
@@ -20,6 +21,12 @@ public sealed class FixResult
     public string? Risk { get; set; }
     public string? PrTitle { get; set; }
     public string? PrDescription { get; set; }
+}
+
+public sealed class AdoWriteResult
+{
+    public bool? Ok { get; set; }
+    public string? Error { get; set; }
 }
 
 public sealed class PublishResult
@@ -34,6 +41,7 @@ public static class Outcome
     public const string PrCreated = "PR_CREATED";
     public const string NotReproducible = "NOT_REPRODUCIBLE";
     public const string NeedsHuman = "NEEDS_HUMAN";
+    public const string DataIssue = "DATA_ISSUE";
     public const string Failed = "FAILED";
     public const string Skipped = "SKIPPED";
 }

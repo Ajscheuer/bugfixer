@@ -103,10 +103,15 @@ public static class Prompts
         Decide one of:
         - **NOT_REPRODUCIBLE** — the code already behaves correctly, it was already fixed on
           `{{cfg.BaseBranch}}`, or the described behaviour doesn't exist in this codebase.
+        - **DATA_ISSUE** — the code behaves correctly, but the reported problem comes from the data in an
+          environment (missing, wrong or insufficient records, test data that doesn't exist yet, bad
+          configuration rows). Set `environment` to where it was reported: `QA` or `DEV` (read the bug's
+          title, repro steps, tags, iteration and comments; if it's unclear use `{{cfg.DefaultDataIssueEnvironment}}`).
+          Never fix data in code and never try to seed or change data.
         - **NEEDS_HUMAN** — real but ambiguous, too large, or needs something listed in the hard rules.
         - Otherwise continue to Step 2.
 
-        For NOT_REPRODUCIBLE or NEEDS_HUMAN: make no commits, discard all edits
+        For NOT_REPRODUCIBLE, DATA_ISSUE or NEEDS_HUMAN: make no commits, discard all edits
         (`git checkout -- .` and delete any untracked files you created), then go to Step 4.
 
         ## Step 2 — Fix
@@ -125,8 +130,9 @@ public static class Prompts
 
         ```json
         {
-          "verdict": "FIXED | NOT_REPRODUCIBLE | NEEDS_HUMAN",
-          "summary": "1-3 sentences",
+          "verdict": "FIXED | NOT_REPRODUCIBLE | DATA_ISSUE | NEEDS_HUMAN",
+          "environment": "QA | DEV (DATA_ISSUE only)",
+          "summary": "1-3 sentences; for DATA_ISSUE, what data is missing or wrong and what's needed",
           "evidence": "files/lines or the failing test proving the bug exists (or doesn't)",
           "rootCause": "...",
           "changes": ["path: what changed"],
@@ -144,7 +150,7 @@ public static class Prompts
         : "- To confirm the bug against real data you may query these databases through their MCP servers: " +
           string.Join(", ", cfg.DatabaseMcpServers.Select(kv => $"`{kv.Key}` ({kv.Value})")) +
           ". READ-ONLY: SELECT queries only, never INSERT/UPDATE/DELETE/DDL or stored procedures that change data. " +
-          "Use only these servers; never connect to a database any other way. Data issues (bad rows rather than bad code) are NEEDS_HUMAN, not code fixes.";
+          "Use only these servers; never connect to a database any other way. Data issues (bad or missing rows rather than bad code) are DATA_ISSUE, not code fixes.";
 
     public static string PublishPr(AppConfig cfg, int id, string branch, string title, string descriptionFile, string prJson) => $$"""
         # Create a DRAFT pull request — unattended
@@ -168,6 +174,22 @@ public static class Prompts
         state, assignee or tags.
 
         Finally write `{{prJson}}`: `{"prId": 123, "prUrl": "https://..."}`.
+        """;
+
+    public static string CommentAndTag(AppConfig cfg, int id, string commentFile, string tag, string doneJson) => $$"""
+        # Comment on and tag a work item — unattended
+
+        Use the Azure DevOps MCP server (`{{cfg.Ado.McpServerName}}`). Never ask questions.
+        Organization `{{cfg.Ado.Organization}}`, project `{{cfg.Ado.Project}}`.
+
+        1. Add a comment to work item #{{id}} with exactly the contents of the file `{{commentFile}}`.
+        2. Add the tag `{{tag}}` to work item #{{id}}. Read its current `System.Tags` first and KEEP every
+           existing tag: the new value is the existing tags plus `{{tag}}`, separated by "; ". If the tag is
+           already there, leave the tags unchanged.
+
+        Change nothing else: no state, assignee, iteration, area or other field changes, no links.
+
+        Then write `{"ok": true}` to `{{doneJson}}`, or `{"ok": false, "error": "..."}` if either step failed.
         """;
 
     public static string CommentOnly(AppConfig cfg, int id, string comment, string doneJson) => $$"""

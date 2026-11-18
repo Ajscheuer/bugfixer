@@ -181,6 +181,31 @@ async Task<bool> ProcessNextBug()
             Done(id, title, Outcome.NotReproducible, note: result.Summary);
             return true;
         }
+        if (verdict == "DATA_ISSUE")
+        {
+            var env = (result.Environment ?? "").Trim().ToUpperInvariant();
+            if (!cfg.DataIssueTags.ContainsKey(env)) env = cfg.DefaultDataIssueEnvironment.ToUpperInvariant();
+            var tag = cfg.DataIssueTags.TryGetValue(env, out var t) ? t : $"Data Issue {env}";
+            Log($"  ◆ data issue ({env}): {result.Summary}");
+
+            if (noPublish)
+            {
+                Done(id, title, Outcome.DataIssue, note: $"[{env}] {result.Summary} (--no-publish: not commented/tagged)");
+                return true;
+            }
+
+            var commentFile = Path.Combine(runDir, "data-issue-comment.md");
+            File.WriteAllText(commentFile,
+                $"🤖 **Automated triage: data issue ({env}), not a code defect.**\n\n" +
+                $"{result.Summary}\n\n" +
+                (string.IsNullOrWhiteSpace(result.Evidence) ? "" : $"**How this was determined:** {result.Evidence}\n\n") +
+                (string.IsNullOrWhiteSpace(result.RootCause) ? "" : $"**Details:** {result.RootCause}\n\n") +
+                $"No code change was made. Tagged `{tag}` for follow-up.");
+            var ok = await CommentAndTag(id, runDir, commentFile, tag);
+            Done(id, title, Outcome.DataIssue,
+                note: $"[{env}] {result.Summary}{(ok ? $" (commented, tagged '{tag}')" : " (ADO comment/tag FAILED — see copilot-ado.log)")}");
+            return true;
+        }
         if (verdict != "FIXED")
         {
             Log($"  ⚠ needs a human: {result.Summary}");
@@ -229,6 +254,16 @@ async Task<bool> ProcessNextBug()
     {
         if (!cfg.KeepWorktrees) await git.RemoveWorktreeAsync(wt, CancellationToken.None);
     }
+}
+
+async Task<bool> CommentAndTag(int id, string runDir, string commentFile, string tag)
+{
+    var done = Path.Combine(runDir, "ado.json");
+    var p = Path.Combine(runDir, "ado-prompt.md");
+    File.WriteAllText(p, Prompts.CommentAndTag(cfg, id, commentFile, tag, done));
+    await copilot.RunAsync(runDir, p, [], ["shell"],
+        TimeSpan.FromMinutes(cfg.Copilot.PublishTimeoutMinutes), Path.Combine(runDir, "copilot-ado.log"), hardStop.Token);
+    return Json.ReadAgentFile<AdoWriteResult>(done)?.Ok == true;
 }
 
 async Task Comment(int id, string runDir, string text)

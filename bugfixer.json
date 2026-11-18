@@ -36,6 +36,9 @@
   "PauseBetweenBugsSeconds": 15,
   "MaxFilesChanged": 15,
   "CommentOnBug": false,
+  // Data issues (code is fine, data is missing/wrong): comment on the bug and add the tag for its environment.
+  "DataIssueTags": { "QA": "Data Issue QA", "DEV": "Data Issue Dev" },
+  "DefaultDataIssueEnvironment": "QA",
   "KeepWorktrees": false,
   "MaxConsecutiveInfraFailures": 3,
   "InfraBackoffMinutes": 30,

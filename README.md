@@ -23,7 +23,7 @@ Every Copilot call runs with `--yolo --autopilot --no-ask-user --model auto`, an
 ## Run
 
 ```powershell
-bugfixer --once --no-publish   # first trial: one bug, fixed locally only, no push/PR
+bugfixer --once --no-publish   # first trial: one bug, fixed locally only, no push/PR/ADO writes; exits after that bug
 bugfixer                       # runs 24/7
 bugfixer --status              # what it has done so far
 bugfixer --forget 12345        # make it pick up bug 12345 again
@@ -37,6 +37,7 @@ bugfixer --forget 12345        # make it pick up bug 12345 again
 |---|---|
 | `PR_CREATED` | Draft PR opened |
 | `NOT_REPRODUCIBLE` | Agent couldn't confirm the bug in code; skipped |
+| `DATA_ISSUE` | Code is correct; the problem is missing or wrong data. The bug gets a comment and a `DataIssueTags` tag for its environment (e.g. `Data Issue QA`). No state or assignee change |
 | `NEEDS_HUMAN` | Real but ambiguous, too large, needs a migration or data, or left uncommitted changes. The local branch is kept |
 | `FAILED` | Timeout, no result file, or the push succeeded but the PR wasn't created |
 | `SKIPPED` | No longer New/unassigned at pick-up, or the branch already existed on the remote |

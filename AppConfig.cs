@@ -26,6 +26,15 @@ public sealed class AppConfig
     public int MaxFilesChanged { get; set; } = 15;
     /// <summary>Post a comment on the ADO bug with the outcome (PR link, or why it wasn't reproduced).</summary>
     public bool CommentOnBug { get; set; } = false;
+    /// <summary>When the bug is bad/missing data rather than code: comment on the bug and add the tag for the
+    /// environment it was reported in. Key = environment (QA, DEV), value = ADO tag.</summary>
+    public Dictionary<string, string> DataIssueTags { get; set; } = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["QA"] = "Data Issue QA",
+        ["DEV"] = "Data Issue Dev",
+    };
+    /// <summary>Used when the agent can't tell which environment the data issue is in.</summary>
+    public string DefaultDataIssueEnvironment { get; set; } = "QA";
     /// <summary>Keep the worktree folder after a bug finishes (branches are always kept).</summary>
     public bool KeepWorktrees { get; set; } = false;
     /// <summary>After this many tooling failures in a row (auth expired, CLI crash...), back off.</summary>
