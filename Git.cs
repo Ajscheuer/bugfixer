@@ -51,6 +51,12 @@ public sealed class Git(AppConfig cfg)
     public async Task<string[]> ChangedFilesAsync(string wt, CancellationToken ct) =>
         (await Run(wt, ct, "diff", "--name-only", $"{BaseRef}...HEAD")).Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
+    public async Task<string[]> ChangedFilesOnBranchAsync(string branch, CancellationToken ct) =>
+        (await Run(cfg.RepoPath, ct, "diff", "--name-only", $"{BaseRef}...{cfg.Remote}/{branch}")).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+    public Task FetchBranchAsync(string branch, CancellationToken ct) =>
+        Run(cfg.RepoPath, ct, "fetch", cfg.Remote, $"+refs/heads/{branch}:refs/remotes/{cfg.Remote}/{branch}");
+
     public Task PushAsync(string wt, string branch, CancellationToken ct) =>
         Run(wt, ct, "push", "-u", cfg.Remote, $"{branch}:refs/heads/{branch}");
 

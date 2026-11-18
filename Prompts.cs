@@ -119,8 +119,9 @@ public static class Prompts
           file). Never run the full backend or full frontend test suite.
         - Keep the change minimal and focused on this bug: no refactors, no reformatting, no dependency
           upgrades, no unrelated files. Never edit secrets, appsettings connection strings or pipeline YAML.
-        - If the fix requires an EF migration / schema change, a product decision, real data or
-          environment access, or touching more than {{cfg.MaxFilesChanged}} files, the verdict is NEEDS_HUMAN.
+        - If the fix requires an EF migration / schema change, a product decision, or real data or
+          environment access, the verdict is NEEDS_HUMAN. The number of files a correct fix touches is
+          NOT a reason for NEEDS_HUMAN: if the bug needs changes across many files, make them all.
 
         {{StaleSection(cfg, ageDays, created)}}
         ## Step 1 — Confirm the bug exists
@@ -135,7 +136,7 @@ public static class Prompts
           title, repro steps, tags, iteration and comments; if it's unclear use `{{cfg.DefaultDataIssueEnvironment}}`).
           Never fix data in code and never try to seed or change data.
         - **OBSOLETE** — (old bugs, Step 0) no longer valid under current business logic.
-        - **NEEDS_HUMAN** — real but ambiguous, too large, or needs something listed in the hard rules.
+        - **NEEDS_HUMAN** — real but ambiguous, or needs something listed in the hard rules.
         - Otherwise continue to Step 2.
 
         For NOT_REPRODUCIBLE, DATA_ISSUE, OBSOLETE or NEEDS_HUMAN: make no commits, discard all edits
@@ -166,7 +167,7 @@ public static class Prompts
           "tests": ["command -> result"],
           "risk": "low | medium | high",
           "prTitle": "short imperative title (FIXED only)",
-          "prDescription": "markdown: problem, root cause, fix, tests, risk (FIXED only)"
+          "prDescription": "markdown: problem, root cause, fix, tests, risk (FIXED only). MAX 3000 characters: Azure DevOps rejects PR descriptions over 4000 and a header is added"
         }
         ```
         {{(string.IsNullOrWhiteSpace(cfg.ExtraFixInstructions) ? "" : "\n## Project-specific notes\n" + cfg.ExtraFixInstructions)}}
@@ -193,7 +194,11 @@ public static class Prompts
            - **it MUST be a draft** (isDraft = true). If the tool cannot create a draft, do NOT create
              the PR; write `{"error": "draft not supported"}` to `{{prJson}}` and finish.
            - title: `{{title.Replace("`", "'")}}`
-           - description: the exact contents of the file `{{descriptionFile}}`
+           - description: the exact contents of the file `{{descriptionFile}}` (it is already within the
+             4000-character limit; do not rewrite or shorten it yourself)
+           - If an active pull request from `refs/heads/{{branch}}` into `refs/heads/{{cfg.BaseBranch}}` already
+             exists, do NOT create another one: use that PR (update its description to the file contents if
+             it differs) and report its id and URL.
         2. Link work item #{{id}} to the pull request.
         {{(cfg.CommentOnBug ? $"3. Add a comment on work item #{id}: \"🤖 AI fix proposed in draft PR <PR link>. Needs human review before merge.\"" : "")}}
 

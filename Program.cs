@@ -76,6 +76,8 @@ while (!StopRequested() && !hardStop.IsCancellationRequested)
 
     try
     {
+        await ResumePendingPrs();
+        if (StopRequested() || hardStop.IsCancellationRequested) break;
         var handled = await ProcessNextBug();
         if (handled) { infraFailures = 0; if (once) break; await Sleep(TimeSpan.FromSeconds(cfg.PauseBetweenBugsSeconds)); }
         else
@@ -236,7 +238,6 @@ async Task<bool> ProcessNextBug()
         if (dirty.Length > 0) { Done(id, title, Outcome.NeedsHuman, branch, note: $"Agent left {dirty.Length} uncommitted change(s)"); return true; }
         if (await git.CommitsAheadAsync(wt, ct) == 0) { Done(id, title, Outcome.Failed, branch, note: "Verdict FIXED but no commits"); return true; }
         var changed = await git.ChangedFilesAsync(wt, ct);
-        if (changed.Length > cfg.MaxFilesChanged) { Done(id, title, Outcome.NeedsHuman, branch, note: $"{changed.Length} files changed (> {cfg.MaxFilesChanged})"); return true; }
 
         if (noPublish)
         {
@@ -245,31 +246,100 @@ async Task<bool> ProcessNextBug()
             return true;
         }
 
-        // 5. Push and open a draft PR to develop (via ADO MCP).
+        // 5. Push and open a draft PR to develop (via ADO MCP), retrying until it exists.
         await git.PushAsync(wt, branch, ct);
-        var prTitle = cfg.PrTitleFormat.Replace("{id}", id.ToString()).Replace("{title}", result.PrTitle ?? title);
-        var descFile = Path.Combine(runDir, "pr-description.md");
-        File.WriteAllText(descFile, PrDescription(id, result, changed));
-        var prJson = Path.Combine(runDir, "pr.json");
-        var prPrompt = Path.Combine(runDir, "pr-prompt.md");
-        File.WriteAllText(prPrompt, Prompts.PublishPr(cfg, id, branch, prTitle, descFile, prJson));
-        await copilot.RunAsync(runDir, prPrompt, [], ["shell"],
-            TimeSpan.FromMinutes(cfg.Copilot.PublishTimeoutMinutes), Path.Combine(runDir, "copilot-pr.log"), ct);
-
-        var pr = Json.ReadAgentFile<PublishResult>(prJson);
-        if (pr?.PrUrl is null)
-        {
-            Done(id, title, Outcome.Failed, branch, note: $"Branch pushed but PR not created: {pr?.Error ?? "no pr.json"}");
-            return true;
-        }
-        Log($"  ✓ draft PR: {pr.PrUrl}");
-        Done(id, title, Outcome.PrCreated, branch, pr.PrUrl, result.Summary);
+        Done(id, title, Outcome.PrPending, branch, note: "Branch pushed; creating PR");
+        await PublishUntilCreated(id, title, branch, runDir, result, changed);
         return true;
     }
     finally
     {
         if (!cfg.KeepWorktrees) await git.RemoveWorktreeAsync(wt, CancellationToken.None);
     }
+}
+
+// Creates the draft PR, retrying with backoff until it succeeds or you stop the loop. Each retry
+// shortens the description a little in case the ADO tool counts characters differently.
+async Task PublishUntilCreated(int id, string title, string branch, string runDir, FixResult result, string[] changed)
+{
+    var prTitle = cfg.PrTitleFormat.Replace("{id}", id.ToString()).Replace("{title}", result.PrTitle ?? title);
+    if (prTitle.Length > 400) prTitle = prTitle[..397] + "...";
+    var full = PrDescription(id, result, changed);
+    File.WriteAllText(Path.Combine(runDir, "pr-description-full.md"), full);
+
+    for (int attempt = 1; ; attempt++)
+    {
+        var limit = Math.Max(1000, cfg.MaxPrDescriptionChars - 250 * (attempt - 1));
+        var descFile = Path.Combine(runDir, "pr-description.md");
+        File.WriteAllText(descFile, Truncate(full, limit, id));
+        var prJson = Path.Combine(runDir, "pr.json");
+        if (File.Exists(prJson)) File.Delete(prJson);
+        var prPrompt = Path.Combine(runDir, "pr-prompt.md");
+        File.WriteAllText(prPrompt, Prompts.PublishPr(cfg, id, branch, prTitle, descFile, prJson));
+        var run = await copilot.RunAsync(runDir, prPrompt, [], ["shell"],
+            TimeSpan.FromMinutes(cfg.Copilot.PublishTimeoutMinutes), Path.Combine(runDir, "copilot-pr.log"), hardStop.Token);
+
+        var pr = Json.ReadAgentFile<PublishResult>(prJson);
+        if (pr?.PrUrl is not null)
+        {
+            Log($"  ✓ draft PR: {pr.PrUrl}{(attempt > 1 ? $" (attempt {attempt})" : "")}");
+            Done(id, title, Outcome.PrCreated, branch, pr.PrUrl, result.Summary);
+            return;
+        }
+
+        var why = pr?.Error ?? (run.TimedOut ? "timed out" : $"no pr.json (exit {run.ExitCode})");
+        if (StopRequested() || hardStop.IsCancellationRequested)
+        {
+            Done(id, title, Outcome.PrPending, branch, note: $"PR not created yet ({why}); will retry on next start");
+            return;
+        }
+        var wait = TimeSpan.FromSeconds(Math.Min(900, 30 * Math.Pow(2, Math.Min(attempt - 1, 5))));
+        Log($"  PR attempt {attempt} failed: {why}. Retrying in {wait.TotalMinutes:0.#} min…");
+        await Sleep(wait);
+        if (StopRequested() || hardStop.IsCancellationRequested)
+        {
+            Done(id, title, Outcome.PrPending, branch, note: $"PR not created yet ({why}); will retry on next start");
+            return;
+        }
+    }
+}
+
+// Bugs whose branch was pushed but whose PR never got created (including older runs that ended as
+// "FAILED — Branch pushed but PR not created"). Called at the top of every loop iteration.
+async Task ResumePendingPrs()
+{
+    var pending = state.All.Where(b => b.Branch is not null &&
+        (b.Outcome == Outcome.PrPending ||
+         (b.Outcome == Outcome.Failed && (b.Note ?? "").StartsWith("Branch pushed but PR not created")))).ToList();
+    foreach (var b in pending)
+    {
+        if (StopRequested() || hardStop.IsCancellationRequested) return;
+        var runsRoot = Path.Combine(cfg.StateDir, "runs");
+        var runDir = Directory.Exists(runsRoot)
+            ? Directory.GetDirectories(runsRoot, $"{b.Id}-*").OrderByDescending(d => d)
+                .FirstOrDefault(d => File.Exists(Path.Combine(d, "result.json")))
+            : null;
+        var result = runDir is null ? null : Json.ReadAgentFile<FixResult>(Path.Combine(runDir, "result.json"));
+        if (runDir is null || result is null)
+        {
+            Log($"  #{b.Id}: can't resume PR — no result.json found. Use --forget {b.Id} to redo the bug.");
+            continue;
+        }
+        Log($"▶ Resuming PR for #{b.Id} ({b.Branch})");
+        string[] changed;
+        try { await git.FetchBranchAsync(b.Branch!, hardStop.Token); changed = await git.ChangedFilesOnBranchAsync(b.Branch!, hardStop.Token); }
+        catch (GitException ex) { Log($"  #{b.Id}: branch {b.Branch} not available on the remote ({ex.Message}). Use --forget {b.Id} to redo it."); continue; }
+        await PublishUntilCreated(b.Id, b.Title, b.Branch!, runDir, result, changed);
+    }
+}
+
+static string Truncate(string text, int max, int id)
+{
+    if (text.Length <= max) return text;
+    var note = $"\n\n…_(Truncated to fit Azure DevOps' 4000-character PR description limit. Full write-up: AB#{id} and this branch's commits.)_";
+    var cut = text[..Math.Max(0, max - note.Length)];
+    if (cut.Length > 0 && char.IsHighSurrogate(cut[^1])) cut = cut[..^1];
+    return cut + note;
 }
 
 async Task<bool> CommentAndTag(int id, string runDir, string commentFile, string tag)

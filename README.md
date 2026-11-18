@@ -8,7 +8,7 @@ For each bug it:
 2. **Branches** `bugfix/ai-<id>-<slug>` from `origin/develop` in a separate git worktree, so your own checkout is never touched.
 3. **Confirms the bug exists** by reading the code, and writes a failing unit test where it can. If the bug can't be confirmed, it records that and moves on to the next one.
 4. **Fixes** the bug, runs scoped tests only, and commits `fix: … (AB#<id>)`. In this step Copilot has **no ADO access**; it may push its own branch (never force, never develop).
-5. **Checks the agent's work** before anything leaves your machine: the branch is unchanged, the working tree is clean, there's at least one commit, and no more than `MaxFilesChanged` files changed.
+5. **Checks the agent's work** before anything leaves your machine: the branch is unchanged, the working tree is clean, and there's at least one commit.
 6. **Pushes** the branch and opens a **draft PR** to `develop` through ADO MCP, linked to the bug. It adds no reviewers, doesn't publish the draft and doesn't change the bug's state.
 
 Every Copilot call runs with `--yolo --autopilot --no-ask-user --model auto`, and stdin is closed, so nothing can ever wait for your input. Each step has a timeout and the whole process tree is killed when it runs out.
@@ -43,7 +43,8 @@ bugfixer --forget 12345        # make it pick up bug 12345 again
 | `DATA_ISSUE` | Code is correct; the problem is missing or wrong data. The bug gets a comment and a `DataIssueTags` tag for its environment (e.g. `Data Issue QA`). No state or assignee change |
 | `OBSOLETE` | Bug is older than `StaleBugDays` (21) and no longer matches current business logic (checked against the current related stories and git history since it was logged). Commented on the bug if `CommentOnObsolete` |
 | `NEEDS_HUMAN` | Real but ambiguous, too large, needs a migration or data, or left uncommitted changes. The local branch is kept |
-| `FAILED` | Timeout, no result file, or the push succeeded but the PR wasn't created |
+| `PR_PENDING` | Branch pushed, draft PR still being created. PR creation is retried with backoff until it succeeds, and resumed on the next start if you stop it. Descriptions are capped at 4000 characters (ADO's limit) |
+| `FAILED` | Timeout or no result file |
 | `SKIPPED` | No longer New/unassigned at pick-up, or the branch already existed on the remote |
 
 Each bug is attempted **once**. Use `--forget` to retry one. Each run's prompts, `bug.json`, `result.json` and full Copilot logs are kept in `.bugfixer/runs/<id>-<timestamp>/`.

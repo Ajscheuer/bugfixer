@@ -45,5 +45,6 @@ public static class Outcome
     public const string DataIssue = "DATA_ISSUE";
     public const string Obsolete = "OBSOLETE";
     public const string Failed = "FAILED";
+    public const string PrPending = "PR_PENDING";   // branch pushed, PR creation still being retried
     public const string Skipped = "SKIPPED";
 }

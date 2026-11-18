@@ -22,8 +22,8 @@ public sealed class AppConfig
     /// <summary>How long to sleep when no New + unassigned bugs are left.</summary>
     public int IdleMinutes { get; set; } = 10;
     public int PauseBetweenBugsSeconds { get; set; } = 15;
-    /// <summary>A fix touching more files than this is not pushed; it is recorded as NEEDS_HUMAN.</summary>
-    public int MaxFilesChanged { get; set; } = 15;
+    /// <summary>Azure DevOps rejects PR descriptions over 4000 characters; longer ones are truncated to this.</summary>
+    public int MaxPrDescriptionChars { get; set; } = 4000;
     /// <summary>Post a comment on the ADO bug with the outcome (PR link, or why it wasn't reproduced).</summary>
     public bool CommentOnBug { get; set; } = false;
     /// <summary>When the bug is bad/missing data rather than code: comment on the bug and add the tag for the

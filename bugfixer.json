@@ -34,7 +34,8 @@
 
   "IdleMinutes": 10,
   "PauseBetweenBugsSeconds": 15,
-  "MaxFilesChanged": 15,
+  // Azure DevOps rejects PR descriptions over 4000 characters.
+  "MaxPrDescriptionChars": 4000,
   "CommentOnBug": false,
   // Data issues (code is fine, data is missing/wrong): comment on the bug and add the tag for its environment.
   "DataIssueTags": { "QA": "Data Issue QA", "DEV": "Data Issue Dev" },
