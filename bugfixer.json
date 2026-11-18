@@ -1,0 +1,41 @@
+{
+  // Your main clone. Only `git fetch` and `git worktree add` run against it.
+  "RepoPath": "C:/src/your-repo",
+  "BaseBranch": "develop",
+  "Remote": "origin",
+  // One worktree per bug is created here (outside RepoPath) and removed afterwards.
+  "WorktreeRoot": "C:/src/your-repo-ai-bugfix",
+  "StateDir": "./.bugfixer",
+  "BranchPrefix": "bugfix/ai-",
+
+  "Ado": {
+    "Organization": "YOUR_ORG",
+    "Project": "YOUR_PROJECT",
+    "Repository": "YOUR_REPO",
+    // Name of the ADO server as Copilot CLI sees it (`/mcp` inside copilot shows it).
+    "McpServerName": "ado",
+    // Optional: restrict to an area path, e.g. "MyProject\\Team A"
+    "AreaPath": null
+  },
+
+  "Copilot": {
+    "Command": "copilot",
+    "Model": "auto",
+    // Leave null if the ADO server is already in ~/.copilot/mcp-config.json.
+    "AdditionalMcpConfig": "mcp-config.json",
+    "SelectTimeoutMinutes": 10,
+    "FixTimeoutMinutes": 90,
+    "PublishTimeoutMinutes": 10,
+    "ExtraArgs": []
+  },
+
+  "IdleMinutes": 10,
+  "PauseBetweenBugsSeconds": 15,
+  "MaxFilesChanged": 15,
+  "CommentOnBug": false,
+  "KeepWorktrees": false,
+  "MaxConsecutiveInfraFailures": 3,
+  "InfraBackoffMinutes": 30,
+
+  "ExtraFixInstructions": "Optional repo notes for the agent, e.g. where the backend and frontend live and how to run focused tests."
+}

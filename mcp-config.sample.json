@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "ado": {
+      "type": "local",
+      "command": "npx",
+      "args": ["-y", "@azure-devops/mcp", "YOUR_ORG"],
+      "tools": ["*"]
+    }
+  }
+}

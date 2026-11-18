@@ -1,0 +1,6 @@
+bin/
+obj/
+.bugfixer/
+mcp-config.json
+*.user
+.vs/

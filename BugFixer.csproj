@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>bugfixer</AssemblyName>
+    <RootNamespace>BugFixer</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Update="bugfixer.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="mcp-config.sample.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
