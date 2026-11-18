@@ -39,6 +39,9 @@
   // Data issues (code is fine, data is missing/wrong): comment on the bug and add the tag for its environment.
   "DataIssueTags": { "QA": "Data Issue QA", "DEV": "Data Issue Dev" },
   "DefaultDataIssueEnvironment": "QA",
+  // Bugs older than this are first checked against current business logic; invalid ones become OBSOLETE.
+  "StaleBugDays": 21,
+  "CommentOnObsolete": true,
   "KeepWorktrees": false,
   "MaxConsecutiveInfraFailures": 3,
   "InfraBackoffMinutes": 30,

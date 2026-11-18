@@ -42,8 +42,10 @@ public static class Prompts
            Microsoft.VSTS.TCM.ReproSteps, Microsoft.VSTS.TCM.SystemInfo,
            Microsoft.VSTS.Common.AcceptanceCriteria, System.AreaPath, System.IterationPath,
            Microsoft.VSTS.Common.Priority, Microsoft.VSTS.Common.Severity, System.Tags,
-           ALL discussion comments, its relations (parent story / related items with their titles),
-           and attachment names.
+           System.CreatedDate, System.ChangedDate, ALL discussion comments, and attachment names.
+           For each related work item (parent, related, duplicate — not child tasks), fetch its CURRENT
+           title, type, state, System.ChangedDate, description and acceptance criteria: these are the
+           business rules as they stand today.
 
         4. Write `{{bugJson}}` as a single valid JSON object:
 
@@ -51,6 +53,8 @@ public static class Prompts
            {
              "id": 1234,
              "title": "...",
+             "createdDate": "2026-10-01T14:00:00Z",
+             "changedDate": "...",
              "workItemType": "Bug",
              "state": "New",
              "assignedTo": null,
@@ -64,7 +68,9 @@ public static class Prompts
              "systemInfo": "...",
              "acceptanceCriteria": "...",
              "comments": [{ "author": "...", "date": "...", "text": "plain text" }],
-             "related": [{ "id": 1, "type": "Parent", "title": "..." }],
+             "related": [{ "id": 1, "relation": "Parent", "workItemType": "User Story", "title": "...",
+                           "state": "...", "changedDate": "...", "description": "plain text",
+                           "acceptanceCriteria": "plain text" }],
              "attachments": ["file names"]
            }
            ```
@@ -72,7 +78,26 @@ public static class Prompts
         Write only that file. Do not touch any other file.
         """;
 
-    public static string Fix(AppConfig cfg, int id, string worktree, string branch, string bugJson, string resultJson) => $$"""
+    private static string StaleSection(AppConfig cfg, int? ageDays, DateTimeOffset? created) => ageDays is int d && d > cfg.StaleBugDays
+        ? $$"""
+
+        ## Step 0 — This bug is {{d}} days old: confirm it is still valid
+        It was logged on {{created:yyyy-MM-dd}}. Business rules may have changed since. Before anything else:
+        - Compare the expected behaviour in the bug with the CURRENT requirements: the `related` items in
+          the bug file (their state, description and acceptance criteria as they are today) and the docs in
+          the repo (e.g. `.github/context/`, `docs/`).
+        - Check what changed in the affected area since then:
+          `git log --since={{created:yyyy-MM-dd}} --oneline -- <paths you identify>` and read the relevant commits.
+        - Read the bug's comments for later decisions ("works as designed", "will be handled in story X").
+        If the behaviour the bug asks for now contradicts current business logic, was deliberately changed,
+        or was superseded by a later story, the verdict is **OBSOLETE**: say in `summary` what changed and
+        cite the story/commit in `evidence`. Do not "fix" code back to an outdated rule.
+        If it is still valid, continue with Step 1 and state in `evidence` that you checked it is still valid.
+        """
+        : "";
+
+    public static string Fix(AppConfig cfg, int id, string worktree, string branch, string bugJson, string resultJson,
+                             int? ageDays = null, DateTimeOffset? created = null) => $$"""
         # Fix Azure DevOps Bug #{{id}} — unattended
 
         You are working completely unattended. Nobody will answer questions. Never stop to ask; make the
@@ -97,6 +122,7 @@ public static class Prompts
         - If the fix requires an EF migration / schema change, a product decision, real data or
           environment access, or touching more than {{cfg.MaxFilesChanged}} files, the verdict is NEEDS_HUMAN.
 
+        {{StaleSection(cfg, ageDays, created)}}
         ## Step 1 — Confirm the bug exists
         Trace the reported behaviour through the code (frontend and/or backend as relevant). Where
         practical, write a focused unit test that reproduces it and confirm it fails before the fix.
@@ -108,10 +134,11 @@ public static class Prompts
           configuration rows). Set `environment` to where it was reported: `QA` or `DEV` (read the bug's
           title, repro steps, tags, iteration and comments; if it's unclear use `{{cfg.DefaultDataIssueEnvironment}}`).
           Never fix data in code and never try to seed or change data.
+        - **OBSOLETE** — (old bugs, Step 0) no longer valid under current business logic.
         - **NEEDS_HUMAN** — real but ambiguous, too large, or needs something listed in the hard rules.
         - Otherwise continue to Step 2.
 
-        For NOT_REPRODUCIBLE, DATA_ISSUE or NEEDS_HUMAN: make no commits, discard all edits
+        For NOT_REPRODUCIBLE, DATA_ISSUE, OBSOLETE or NEEDS_HUMAN: make no commits, discard all edits
         (`git checkout -- .` and delete any untracked files you created), then go to Step 4.
 
         ## Step 2 — Fix
@@ -130,7 +157,7 @@ public static class Prompts
 
         ```json
         {
-          "verdict": "FIXED | NOT_REPRODUCIBLE | DATA_ISSUE | NEEDS_HUMAN",
+          "verdict": "FIXED | NOT_REPRODUCIBLE | DATA_ISSUE | OBSOLETE | NEEDS_HUMAN",
           "environment": "QA | DEV (DATA_ISSUE only)",
           "summary": "1-3 sentences; for DATA_ISSUE, what data is missing or wrong and what's needed",
           "evidence": "files/lines or the failing test proving the bug exists (or doesn't)",

@@ -35,6 +35,10 @@ public sealed class AppConfig
     };
     /// <summary>Used when the agent can't tell which environment the data issue is in.</summary>
     public string DefaultDataIssueEnvironment { get; set; } = "QA";
+    /// <summary>Bugs older than this get a validity check against current business logic before any fix.</summary>
+    public int StaleBugDays { get; set; } = 21;
+    /// <summary>Comment on bugs found OBSOLETE (no longer valid under current business logic). No state/tag change.</summary>
+    public bool CommentOnObsolete { get; set; } = true;
     /// <summary>Keep the worktree folder after a bug finishes (branches are always kept).</summary>
     public bool KeepWorktrees { get; set; } = false;
     /// <summary>After this many tooling failures in a row (auth expired, CLI crash...), back off.</summary>

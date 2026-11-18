@@ -155,8 +155,10 @@ async Task<bool> ProcessNextBug()
         // 3. Verify + fix. ADO is denied entirely in this step, and so is pushing.
         var resultJson = Path.Combine(runDir, "result.json");
         var fixPrompt = Path.Combine(runDir, "fix-prompt.md");
-        File.WriteAllText(fixPrompt, Prompts.Fix(cfg, id, wt, branch, bugJson, resultJson));
-        Log($"  working in {wt} on {branch} (timeout {cfg.Copilot.FixTimeoutMinutes} min)…");
+        int? ageDays = bug.CreatedDate is DateTimeOffset c ? (int)(DateTimeOffset.Now - c).TotalDays : null;
+        File.WriteAllText(fixPrompt, Prompts.Fix(cfg, id, wt, branch, bugJson, resultJson, ageDays, bug.CreatedDate));
+        var stale = ageDays > cfg.StaleBugDays ? $", {ageDays} days old → validity check first" : "";
+        Log($"  working in {wt} on {branch} (timeout {cfg.Copilot.FixTimeoutMinutes} min{stale})…");
 
         var fix = await copilot.RunAsync(wt, fixPrompt, [runDir],
             [cfg.Ado.McpServerName, "shell(git reset)", "shell(git rebase)",
@@ -179,6 +181,20 @@ async Task<bool> ProcessNextBug()
             if (cfg.CommentOnBug && !noPublish)
                 await Comment(id, runDir, $"🤖 Automated check: could not confirm this bug on `{cfg.BaseBranch}`.\n\n{result.Summary}\n\nEvidence: {result.Evidence}");
             Done(id, title, Outcome.NotReproducible, note: result.Summary);
+            return true;
+        }
+        if (verdict == "OBSOLETE")
+        {
+            Log($"  ⊘ obsolete: {result.Summary}");
+            var commented = false;
+            if (cfg.CommentOnObsolete && !noPublish)
+            {
+                var text = $"🤖 Automated triage: this bug (logged {bug.CreatedDate:yyyy-MM-dd}) appears to be no longer valid under the current business logic.\n\n" +
+                           $"{result.Summary}\n\n**Evidence:** {result.Evidence}\n\nNo code change was made. Please confirm and close if you agree.";
+                await Comment(id, runDir, text);
+                commented = true;
+            }
+            Done(id, title, Outcome.Obsolete, note: result.Summary + (commented ? " (commented)" : ""));
             return true;
         }
         if (verdict == "DATA_ISSUE")

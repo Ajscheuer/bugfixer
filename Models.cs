@@ -7,11 +7,12 @@ public sealed class BugDetails
     public string? State { get; set; }
     public string? AssignedTo { get; set; }
     public string? WorkItemType { get; set; }
+    public DateTimeOffset? CreatedDate { get; set; }
 }
 
 public sealed class FixResult
 {
-    public string? Verdict { get; set; }          // FIXED | NOT_REPRODUCIBLE | DATA_ISSUE | NEEDS_HUMAN
+    public string? Verdict { get; set; }          // FIXED | NOT_REPRODUCIBLE | DATA_ISSUE | OBSOLETE | NEEDS_HUMAN
     public string? Environment { get; set; }      // DATA_ISSUE only: QA | DEV
     public string? Summary { get; set; }
     public string? Evidence { get; set; }
@@ -42,6 +43,7 @@ public static class Outcome
     public const string NotReproducible = "NOT_REPRODUCIBLE";
     public const string NeedsHuman = "NEEDS_HUMAN";
     public const string DataIssue = "DATA_ISSUE";
+    public const string Obsolete = "OBSOLETE";
     public const string Failed = "FAILED";
     public const string Skipped = "SKIPPED";
 }
