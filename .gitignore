@@ -4,3 +4,4 @@ obj/
 mcp-config.json
 *.user
 .vs/
+bugfixer.local.json

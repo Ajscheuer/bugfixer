@@ -17,7 +17,7 @@ Every Copilot call runs with `--yolo --autopilot --no-ask-user --model auto`, an
 
 1. Install Copilot CLI and sign in once: `npm i -g @github/copilot`, then `copilot` → `/login`.
 2. Make sure Copilot CLI can see the ADO MCP server. Either add it to `~/.copilot/mcp-config.json`, or copy `mcp-config.sample.json` to `mcp-config.json` next to the exe and set your org. Then run `copilot`, type `/mcp` and check the server name matches `Ado.McpServerName`.
-3. Edit `bugfixer.json`: `RepoPath`, `WorktreeRoot` (must be outside the repo), and `Ado.Organization`, `Ado.Project` and `Ado.Repository`.
+3. Copy `bugfixer.json` to `bugfixer.local.json` (git-ignored, picked up automatically) and edit it: `RepoPath`, `WorktreeRoot` (must be outside the repo), and `Ado.Organization`, `Ado.Project` and `Ado.Repository`.
 4. Build: `dotnet publish -c Release -o C:\tools\bugfixer`
 
 ## Run
@@ -44,3 +44,8 @@ bugfixer --forget 12345        # make it pick up bug 12345 again
 Each bug is attempted **once**. Use `--forget` to retry one. Each run's prompts, `bug.json`, `result.json` and full Copilot logs are kept in `.bugfixer/runs/<id>-<timestamp>/`.
 
 If Copilot or git fails 3 times in a row (for example an expired login or an MCP server that's down), it backs off for 30 minutes instead of burning through the queue.
+
+## Config tips
+
+- `Copilot.DenyTools` blocks tools or whole MCP servers in every Copilot call. Use it for anything in your global `~/.copilot/mcp-config.json` the agent must never touch, such as database servers.
+- `PrTitleFormat` controls the PR title (`{id}`, `{title}`). Set it to `{title}` if your repo has its own title convention and you tell the agent about it in `ExtraFixInstructions`.

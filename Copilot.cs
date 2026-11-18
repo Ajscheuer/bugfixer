@@ -23,7 +23,7 @@ public sealed class Copilot(AppConfig cfg)
         };
         foreach (var d in extraDirs) args.AddRange(["--add-dir", d]);
         // Deny rules still win over --yolo. A denied call just fails inside the agent; it never prompts.
-        foreach (var t in denyTools) args.Add($"--deny-tool={t}");
+        foreach (var t in denyTools.Concat(cfg.Copilot.DenyTools)) args.Add($"--deny-tool={t}");
         if (!string.IsNullOrWhiteSpace(cfg.Copilot.AdditionalMcpConfig))
             args.AddRange(["--additional-mcp-config", cfg.Copilot.AdditionalMcpConfig!]);
         args.AddRange(cfg.Copilot.ExtraArgs);

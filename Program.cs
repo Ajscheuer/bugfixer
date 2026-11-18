@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 using BugFixer;
 
 // ── args ──────────────────────────────────────────────────────────────────────
-string configPath = Path.Combine(AppContext.BaseDirectory, "bugfixer.json");
+string? configPath = null;
 bool once = false, noPublish = false, status = false;
 int? forget = null;
 for (int i = 0; i < args.Length; i++)
@@ -25,7 +25,7 @@ for (int i = 0; i < args.Length; i++)
     }
 }
 
-var cfg = AppConfig.Load(configPath);
+var cfg = AppConfig.Load(AppConfig.ResolvePath(configPath));
 var state = StateStore.Load(cfg.StateDir);
 var logPath = Path.Combine(cfg.StateDir, "logs", "bugfixer.log");
 Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
@@ -206,7 +206,7 @@ async Task<bool> ProcessNextBug()
 
         // 5. Push and open a draft PR to develop (via ADO MCP).
         await git.PushAsync(wt, branch, ct);
-        var prTitle = $"[AI] Bug #{id}: {result.PrTitle ?? title}";
+        var prTitle = cfg.PrTitleFormat.Replace("{id}", id.ToString()).Replace("{title}", result.PrTitle ?? title);
         var descFile = Path.Combine(runDir, "pr-description.md");
         File.WriteAllText(descFile, PrDescription(id, result, changed));
         var prJson = Path.Combine(runDir, "pr.json");

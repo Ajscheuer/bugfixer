@@ -13,6 +13,8 @@ public sealed class AppConfig
     /// <summary>State, logs and per-bug run folders.</summary>
     public string StateDir { get; set; } = ".bugfixer";
     public string BranchPrefix { get; set; } = "bugfix/ai-";
+    /// <summary>PR title. Placeholders: {id}, {title} (the agent's suggested PR title).</summary>
+    public string PrTitleFormat { get; set; } = "[AI] Bug #{id}: {title}";
 
     public AdoConfig Ado { get; set; } = new();
     public CopilotConfig Copilot { get; set; } = new();
@@ -31,6 +33,16 @@ public sealed class AppConfig
     public int InfraBackoffMinutes { get; set; } = 30;
     /// <summary>Appended verbatim to the fix prompt (repo conventions, test commands, etc.).</summary>
     public string? ExtraFixInstructions { get; set; }
+
+    /// <summary>--config wins; otherwise bugfixer.local.json, then bugfixer.json, in the current dir, then next to the exe.</summary>
+    public static string ResolvePath(string? explicitPath)
+    {
+        if (explicitPath is not null) return explicitPath;
+        foreach (var dir in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })
+            foreach (var name in new[] { "bugfixer.local.json", "bugfixer.json" })
+                if (File.Exists(Path.Combine(dir, name))) return Path.Combine(dir, name);
+        return Path.Combine(Directory.GetCurrentDirectory(), "bugfixer.json");
+    }
 
     public static AppConfig Load(string path)
     {
@@ -85,6 +97,8 @@ public sealed class CopilotConfig
     public int SelectTimeoutMinutes { get; set; } = 10;
     public int FixTimeoutMinutes { get; set; } = 90;
     public int PublishTimeoutMinutes { get; set; } = 10;
+    /// <summary>Tools or whole MCP servers denied in EVERY Copilot call (e.g. database servers).</summary>
+    public List<string> DenyTools { get; set; } = new();
     /// <summary>Extra raw CLI args added to every call.</summary>
     public List<string> ExtraArgs { get; set; } = new();
 }
