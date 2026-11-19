@@ -7,6 +7,8 @@
   "WorktreeRoot": "C:/src/your-repo-ai-bugfix",
   "StateDir": "./.bugfixer",
   "BranchPrefix": "bugfix/ai-",
+  // Git-ignored local config copied from RepoPath into each worktree, e.g. ["backend/.env", "frontend/.env"].
+  "CopyFromRepo": [],
 
   "Ado": {
     "Organization": "YOUR_ORG",

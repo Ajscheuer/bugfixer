@@ -13,6 +13,9 @@ public sealed class AppConfig
     /// <summary>State, logs and per-bug run folders.</summary>
     public string StateDir { get; set; } = ".bugfixer";
     public string BranchPrefix { get; set; } = "bugfix/ai-";
+    /// <summary>Git-ignored files (env files, local appsettings) copied from RepoPath into each new worktree,
+    /// relative to the repo root. Existing files in the worktree are never overwritten.</summary>
+    public List<string> CopyFromRepo { get; set; } = new();
     /// <summary>PR title. Placeholders: {id}, {title} (the agent's suggested PR title).</summary>
     public string PrTitleFormat { get; set; } = "[AI] Bug #{id}: {title}";
 

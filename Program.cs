@@ -151,6 +151,7 @@ async Task<bool> ProcessNextBug()
     string wt;
     try { wt = await git.CreateWorktreeAsync(id, branch, ct); }
     catch (GitException ex) { throw new InfraException(ex.Message); }
+    CopyLocalConfig(wt);
 
     try
     {
@@ -359,6 +360,23 @@ async Task Comment(int id, string runDir, string text)
     File.WriteAllText(p, Prompts.CommentOnly(cfg, id, text, done));
     await copilot.RunAsync(runDir, p, [], ["shell"],
         TimeSpan.FromMinutes(cfg.Copilot.PublishTimeoutMinutes), Path.Combine(runDir, "copilot-comment.log"), hardStop.Token);
+}
+
+// Env files and local appsettings are git-ignored, so a fresh worktree doesn't have them.
+void CopyLocalConfig(string wt)
+{
+    var copied = new List<string>();
+    foreach (var rel in cfg.CopyFromRepo)
+    {
+        var src = Path.Combine(cfg.RepoPath, rel);
+        var dst = Path.Combine(wt, rel);
+        if (!File.Exists(src)) { Log($"  ! CopyFromRepo: {rel} not found in {cfg.RepoPath}"); continue; }
+        if (File.Exists(dst)) continue;
+        Directory.CreateDirectory(Path.GetDirectoryName(dst)!);
+        File.Copy(src, dst);
+        copied.Add(rel);
+    }
+    if (copied.Count > 0) Log($"  copied local config: {string.Join(", ", copied)}");
 }
 
 void Done(int id, string title, string outcome, string? branch = null, string? prUrl = null, string? note = null)
